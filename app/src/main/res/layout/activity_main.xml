@@ -73,6 +73,26 @@
         android:textSize="18sp"
         tools:text="123" />
 
+    <LinearLayout
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_marginLeft="200dp"
+        android:layout_alignBottom="@id/tv_result"
+        android:gravity="center_horizontal"
+        android:background="@drawable/circle"
+        >
+        <LinearLayout
+            android:id="@+id/ll"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:orientation="vertical"
+            android:background="@drawable/cir_img"
+            android:layout_gravity="center_horizontal"
+            android:text="10"
+
+            android:gravity="center"
+            android:textSize="20dp"/>
+    </LinearLayout>
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/fab"
         android:layout_width="wrap_content"

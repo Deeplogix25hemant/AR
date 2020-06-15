@@ -1,6 +1,14 @@
 package com.hl3hl3.arcoremeasure;
 
 import android.content.Context;
+import android.content.pm.ActivityInfo;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
@@ -15,10 +23,12 @@ import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.Window;
 import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.PopupWindow;
 import android.widget.TextView;
@@ -64,7 +74,7 @@ import io.fabric.sdk.android.Fabric;
  * Created by user on 2017/9/25.
  */
 
-public class ArMeasureActivity extends AppCompatActivity {
+public class ArMeasureActivity extends AppCompatActivity implements SensorEventListener {
     private static final String TAG = ArMeasureActivity.class.getSimpleName();
     private static final String ASSET_NAME_CUBE_OBJ = "cube.obj";
     private static final String ASSET_NAME_CUBE = "cube_green.png";
@@ -182,13 +192,17 @@ public class ArMeasureActivity extends AppCompatActivity {
             return true;
         }
     };
+//-------------mAccelerometer------------------------------
+private SensorManager mSensorManager;
+    private Sensor mAccelerometer;
 
+    private AnimatedView mAnimatedView = null;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Fabric.with(this, new Crashlytics());
         setContentView(R.layout.activity_main);
-
+accelerometer();
 //        overlayViewForTest = (OverlayView)findViewById(R.id.overlay_for_test);
         tv_result = findViewById(R.id.tv_result);
         fab = findViewById(R.id.fab);
@@ -238,6 +252,7 @@ public class ArMeasureActivity extends AppCompatActivity {
         installRequested = false;
     }
 
+
     private void setupRenderer(){
         if(surfaceView != null){
             return;
@@ -263,6 +278,7 @@ public class ArMeasureActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_GAME);
         logStatus("onResume()");
         if (session == null) {
             Exception exception = null;
@@ -325,6 +341,7 @@ public class ArMeasureActivity extends AppCompatActivity {
     @Override
     public void onPause() {
         super.onPause();
+        mSensorManager.unregisterListener(this);
         logStatus("onPause()");
         if (session != null) {
             // Note that the order matters - GLSurfaceView is paused first so that it does not try
@@ -959,5 +976,80 @@ public class ArMeasureActivity extends AppCompatActivity {
             });
         }
 
+    }
+    //------------------------------------------------------------------------
+    private void accelerometer() {
+//        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+        mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+
+        mAnimatedView = new AnimatedView(this);
+        LinearLayout ll=findViewById(R.id.ll);
+        ll.addView(mAnimatedView);
+    }
+
+
+
+    @Override
+    public void onAccuracyChanged(Sensor arg0, int arg1) { }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            mAnimatedView.onSensorEvent(event);
+        }
+    }
+
+    public class AnimatedView extends View {
+
+        private static final int CIRCLE_RADIUS = 25; //pixels
+
+        private Paint mPaint;
+        private int x;
+        private int y;
+        private int viewWidth;
+        private int viewHeight;
+
+        public AnimatedView(Context context) {
+            super(context);
+            mPaint = new Paint();
+            mPaint.setColor(Color.MAGENTA);
+        }
+
+        @Override
+        protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+            super.onSizeChanged(w, h, oldw, oldh);
+            viewWidth = w;
+            viewHeight = h;
+        }
+
+        public void onSensorEvent (SensorEvent event) {
+            x = x - (int) event.values[0];
+            y = y + (int) event.values[1];
+            //Make sure we do not draw outside the bounds of the view.
+            //So the max values we can draw to are the bounds + the size of the circle
+            if (x <= 0 + CIRCLE_RADIUS) {
+                x = 0 + CIRCLE_RADIUS;
+            }
+            if (x >= viewWidth - CIRCLE_RADIUS) {
+                x = viewWidth - CIRCLE_RADIUS;
+            }
+            if (y <= 0 + CIRCLE_RADIUS) {
+                y = 0 + CIRCLE_RADIUS;
+            }
+            if (y >= viewHeight - CIRCLE_RADIUS) {
+                y = viewHeight - CIRCLE_RADIUS;
+            }
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            canvas.drawCircle(x, y, CIRCLE_RADIUS, mPaint);
+            //We need to call invalidate each time, so that the view continuously draws
+            invalidate();
+        }
     }
 }
